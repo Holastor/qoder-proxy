@@ -25,15 +25,31 @@ const setSSEHeaders = (res) => {
 
 // Smart routing - support GET requests for better client compatibility
 router.get('/', (req, res) => {
-  // Extract parameters from query string
-  const { message, messages, model = 'auto', stream = false, temperature, max_tokens } = req.query;
+  // Debug: Log what we're actually receiving
+  console.log('[GET /chat/completions] Query params:', req.query);
+  console.log('[GET /chat/completions] Body:', req.body);
+  console.log('[GET /chat/completions] Headers:', req.headers);
+  
+  // Extract parameters from query string, body, or headers
+  const { message, messages, model = 'auto', stream = false, temperature, max_tokens, content, text, prompt } = { 
+    ...req.query, 
+    ...req.body 
+  };
   
   let parsedMessages;
   
-  if (messages) {
-    // Try to parse messages from query parameter (JSON string)
+  // Try multiple parameter names that different bots might use
+  const userInput = message || content || text || prompt || req.query.q || req.body.content;
+  const messageArray = messages || req.body.messages;
+  
+  if (messageArray) {
+    // Try to parse messages from parameter (JSON string or already parsed)
     try {
-      parsedMessages = JSON.parse(decodeURIComponent(messages));
+      if (typeof messageArray === 'string') {
+        parsedMessages = JSON.parse(decodeURIComponent(messageArray));
+      } else {
+        parsedMessages = messageArray;
+      }
     } catch (e) {
       return res.status(400).json({
         error: {
@@ -42,15 +58,21 @@ router.get('/', (req, res) => {
         }
       });
     }
-  } else if (message) {
-    // Simple single message support
-    parsedMessages = [{ role: 'user', content: decodeURIComponent(message) }];
+  } else if (userInput) {
+    // Simple single message support with various parameter names
+    parsedMessages = [{ role: 'user', content: decodeURIComponent(userInput.toString()) }];
   } else {
+    // If no recognized parameters, provide helpful debug info
     return res.status(400).json({
       error: {
         message: 'Missing required parameter. Use ?message=your_text or ?messages=[{"role":"user","content":"text"}]',
         type: 'invalid_request_error',
-        help: 'GET Example: /v1/chat/completions?message=Hello&model=auto'
+        help: 'GET Example: /v1/chat/completions?message=Hello&model=auto',
+        debug: {
+          receivedQuery: req.query,
+          receivedBody: req.body,
+          supportedParams: ['message', 'content', 'text', 'prompt', 'messages']
+        }
       }
     });
   }
