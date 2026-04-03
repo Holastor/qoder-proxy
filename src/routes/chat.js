@@ -86,10 +86,22 @@ router.post('/', (req, res) => {
     req.socket.setTimeout(0);
     req.socket.setKeepAlive(true);
     
-    // Send SSE comment immediately to keep connection alive (IDE compatibility)
-    // Don't send an empty delta - some IDEs interpret that as end of stream
-    res.write(': keep-alive\n\n');
-    console.log('[Stream Timing] Keepalive sent at', Date.now() - streamStartTime, 'ms');
+    // For IDE compatibility: Send first chunk immediately with role
+    // IDEs like Zed disconnect if they don't receive content within ~10ms
+    // We'll send empty content now, then stream real content from qodercli
+    const firstChunk = {
+      id,
+      object: 'chat.completion.chunk',
+      created: Math.floor(Date.now() / 1000),
+      model,
+      choices: [{
+        index: 0,
+        delta: { role: 'assistant', content: '' },
+        finish_reason: null
+      }]
+    };
+    res.write(`data: ${JSON.stringify(firstChunk)}\n\n`);
+    console.log('[Stream Timing] First chunk sent at', Date.now() - streamStartTime, 'ms');
     
     // Explicitly flush the response buffer
     if (typeof res.flush === 'function') res.flush();
@@ -117,10 +129,8 @@ router.post('/', (req, res) => {
           res.write(`data: ${JSON.stringify(buildToolCallStreamChunk(data, model, id))}\n\n`);
           lastFinishReason = 'tool_calls';
         } else if (content) {
-          // First chunk should include role, subsequent chunks should not
-          const delta = hasReceivedData 
-            ? { content }
-            : { role: 'assistant', content };
+          // All chunks after the first should only contain content (no role)
+          const delta = { content };
           
           const chunk = {
             id,
