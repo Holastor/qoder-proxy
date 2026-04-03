@@ -83,19 +83,9 @@ router.post('/', (req, res) => {
     req.socket.setTimeout(0);
     req.socket.setKeepAlive(true);
     
-    // Send initial empty delta immediately to establish SSE stream (required for IDE tools)
-    const initialChunk = {
-      id,
-      object: 'chat.completion.chunk',
-      created: Math.floor(Date.now() / 1000),
-      model,
-      choices: [{
-        index: 0,
-        delta: { role: 'assistant', content: '' },
-        finish_reason: null
-      }]
-    };
-    res.write(`data: ${JSON.stringify(initialChunk)}\n\n`);
+    // Send SSE comment immediately to keep connection alive (IDE compatibility)
+    // Don't send an empty delta - some IDEs interpret that as end of stream
+    res.write(': keep-alive\n\n');
     
     // Explicitly flush the response buffer
     if (typeof res.flush === 'function') res.flush();
@@ -109,7 +99,6 @@ router.post('/', (req, res) => {
       flags,
       timeoutMs: QODER_TIMEOUT_MS,
       onChunk: (data) => {
-        hasReceivedData = true;
         const content = extractTextContent(data.message);
         const toolCalls = extractToolCalls(data.message?.content);
         const finishReason = data.message?.stop_reason || null;
@@ -120,7 +109,21 @@ router.post('/', (req, res) => {
           res.write(`data: ${JSON.stringify(buildToolCallStreamChunk(data, model, id))}\n\n`);
           lastFinishReason = 'tool_calls';
         } else if (content) {
-          res.write(`data: ${JSON.stringify(buildStreamChunk(content, model, id))}\n\n`);
+          // First chunk should include role, subsequent chunks should not
+          const delta = hasReceivedData 
+            ? { content }
+            : { role: 'assistant', content };
+          
+          const chunk = {
+            id,
+            object: 'chat.completion.chunk',
+            created: Math.floor(Date.now() / 1000),
+            model,
+            choices: [{ index: 0, delta, finish_reason: null }]
+          };
+          
+          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+          hasReceivedData = true;
         }
       },
       onDone: (code, stderr) => {
