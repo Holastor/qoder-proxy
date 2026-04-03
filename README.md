@@ -9,7 +9,7 @@ Use Qoder through any tool or library designed for OpenAI's API.
 - **💬 Full Chat Support**: Support for `/v1/chat/completions` (system messages, multi-turn history)
 - **🛠 Tool Calling**: Automatic tool execution (file operations, shell commands, code editing) with OpenAI-compatible responses
 - **⚡ Streaming**: Real-time SSE streaming responses without lag
-- **🔄 Intelligent Tier Mapping**: Seamless translation between OpenAI aliases (gpt-4, claude-3.5) and Qoder tiers (auto, ultimate, lite) since qoder cli doesn't have those models but uses Qoder's own tier system
+- **🔄 Model Name Mapping**: Accepts common AI model names (gpt-4, claude-3.5) and maps them to Qoder CLI tiers (auto, ultimate, lite) for seamless integration with existing tools
 - **📊 Admin Dashboard**: Built-in dark-themed web dashboard for testing, viewing live logs, and monitoring proxy health
 - **🐳 Docker Native**: Zero-persistence RAM-only architecture designed for easy deployment to cloud services via our public GHCR image
 
@@ -62,18 +62,20 @@ The built-in web dashboard provides full observability into what your proxy is d
 
 ---
 
-## 🤖 Model Intelligence & Mapping
+## 🤖 Model Name Mapping
 
-The proxy dynamically understands standard OpenAI names and routes them intelligently to your permitted Qoder tiers.
+The proxy accepts familiar model names from tools and maps them to Qoder CLI tiers. **All responses come from Qoder's models** - this mapping just makes it easier to integrate with existing OpenAI-compatible tools.
 
-| OpenAI / Anthropic Alias | Routes To Qoder Tier |
+| Common Model Names | Maps To Qoder Tier | 
 |---|---|
 | `gpt-4`, `gpt-4o`, `claude-3.5-sonnet` | `auto` |
 | `o1`, `claude-3-opus` | `ultimate` |
 | `o1-mini`, `o3-mini`, `claude-3-sonnet`| `performance` |
 | `claude-3.5-haiku`, `gemini-flash` | `efficient` |
 | `gpt-3.5-turbo`, `gpt-4o-mini`, `claude-3-haiku` | `lite` |
-| *(New frontier models)* `qwen`, `kimi`, `glm`| Respective custom identifier (`qmodel`, `kmodel`, etc.) |
+| *(Qoder native)* `qwen`, `kimi`, `glm`| `qmodel`, `kmodel`, `gmodel` |
+
+**Note**: You're getting responses from Qoder's AI models, not OpenAI or Anthropic. The name mapping is purely for compatibility with tools that expect standard model names.
 
 ---
 
