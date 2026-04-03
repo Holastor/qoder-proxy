@@ -60,7 +60,6 @@ router.post('/', (req, res) => {
   const id = newId('chatcmpl');
   
   // Debug: Log prompt for IDE tools
-  const userAgent = req.headers['user-agent'] || '';
   if (userAgent.includes('Continue') || userAgent.includes('Zed') || userAgent.includes('Cursor')) {
     console.log('[IDE Prompt]', prompt.substring(0, 150) + (prompt.length > 150 ? '...' : ''));
   }
