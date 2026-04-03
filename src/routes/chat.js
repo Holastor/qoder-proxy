@@ -79,6 +79,10 @@ router.post('/', (req, res) => {
   if (stream) {
     setSSEHeaders(res);
     
+    // Disable socket timeout and enable keepalive for long-running streams
+    req.socket.setTimeout(0);
+    req.socket.setKeepAlive(true);
+    
     // Send initial empty delta immediately to establish SSE stream (required for IDE tools)
     const initialChunk = {
       id,
@@ -93,7 +97,11 @@ router.post('/', (req, res) => {
     };
     res.write(`data: ${JSON.stringify(initialChunk)}\n\n`);
     
+    // Explicitly flush the response buffer
+    if (typeof res.flush === 'function') res.flush();
+    
     let lastFinishReason = 'stop';
+    let hasReceivedData = false;
 
     const child = runQoderRequest({
       prompt,
@@ -101,6 +109,7 @@ router.post('/', (req, res) => {
       flags,
       timeoutMs: QODER_TIMEOUT_MS,
       onChunk: (data) => {
+        hasReceivedData = true;
         const content = extractTextContent(data.message);
         const toolCalls = extractToolCalls(data.message?.content);
         const finishReason = data.message?.stop_reason || null;
@@ -129,7 +138,12 @@ router.post('/', (req, res) => {
       },
     });
 
-    req.on('close', () => child.kill());
+    req.on('close', () => {
+      if (!hasReceivedData) {
+        console.log('[chat/completions] Client disconnected before receiving any data');
+      }
+      child.kill();
+    });
   } else {
     let fullContent = '';
     let finishReason = 'stop';
