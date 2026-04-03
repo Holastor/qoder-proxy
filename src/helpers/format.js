@@ -163,40 +163,25 @@ const getModelMapping = (requestedModel) => {
 
 /**
  * Convert an OpenAI messages array into a single prompt string.
- *
- * - `system` messages are prepended as "System: ..."
- * - `user` / `assistant` turns are interleaved in order
- * - Multi-part content (array of {type, text}) is flattened to text
- *
- * This preserves full conversation history so qodercli gets proper context.
+ * 
+ * For better qodercli compatibility, we only send the latest user message
+ * instead of full conversation history, as qodercli responds better to
+ * individual prompts than conversation threads.
  */
 const messagesToPrompt = (messages) => {
-  let systemPart = null;
-  const turns = [];
-
-  for (const msg of messages) {
-    // Flatten content: may be a string or [{type:'text', text:'...'}]
-    const raw = Array.isArray(msg.content)
-      ? msg.content.filter((p) => p.type === 'text').map((p) => p.text).join('')
-      : msg.content || '';
-
-    if (!raw.trim()) continue;
-
-    if (msg.role === 'system') {
-      // Only one system message — last one wins if multiple provided
-      systemPart = raw.trim();
-    } else if (msg.role === 'user') {
-      turns.push(`User: ${raw.trim()}`);
-    } else if (msg.role === 'assistant') {
-      turns.push(`Assistant: ${raw.trim()}`);
-    }
+  // Find the last user message
+  const lastUserMessage = messages.slice().reverse().find(msg => msg.role === 'user');
+  
+  if (!lastUserMessage) {
+    return 'Hello';
   }
-
-  const parts = [];
-  if (systemPart) parts.push(`System: ${systemPart}`);
-  parts.push(...turns);
-
-  return parts.join('\n\n');
+  
+  // Extract content
+  const content = Array.isArray(lastUserMessage.content)
+    ? lastUserMessage.content.filter((p) => p.type === 'text').map((p) => p.text).join('')
+    : lastUserMessage.content || '';
+    
+  return `User: ${content.trim()}`;
 };
 
 // ---------------------------------------------------------------------------

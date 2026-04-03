@@ -74,17 +74,22 @@ router.get('/api/models', (_req, res) => res.json({ models: QODER_MODELS }));
 // ── API — playground chat (SSE) ──────────────────────────────────────────────
 router.post('/api/chat', (req, res) => {
   const { messages, model: requestedModel = 'lite' } = req.body;
+  console.log('[dashboard/api/chat] Received messages:', JSON.stringify(messages, null, 2));
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages is required and must be a non-empty array' });
   }
   const model  = getModelMapping(requestedModel);
   const prompt = messagesToPrompt(messages);
+  console.log('[dashboard/api/chat] Generated prompt:', prompt);
   const id     = newId('chatcmpl');
 
   res.setHeader('Content-Type',    'text/event-stream');
   res.setHeader('Cache-Control',   'no-cache');
   res.setHeader('Connection',      'keep-alive');
   res.setHeader('X-Accel-Buffering','no');
+
+  // Send initial SSE headers to establish connection
+  res.write('data: {"type":"connection","status":"connected"}\n\n');
 
   let lastFinishReason = 'stop';
 
@@ -107,10 +112,11 @@ router.post('/api/chat', (req, res) => {
     },
   });
 
-  req.on('close', () => {
-    console.log('[runQoderRequest] HTTP request closed, killing qodercli process');
-    child.kill();
-  });
+  // Remove close handler that was causing immediate process termination
+  // req.on('close', () => {
+  //   console.log('[runQoderRequest] HTTP request closed, killing qodercli process');
+  //   child.kill();
+  // });
 });
 
 // ── API — request logs ───────────────────────────────────────────────────────

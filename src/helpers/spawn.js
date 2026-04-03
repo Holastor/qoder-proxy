@@ -109,7 +109,19 @@ const runQoderRequest = ({ prompt, model, flags = [], timeoutMs = 120_000, onChu
           onChunk(data);
         }
       } catch (e) {
-        // Skip invalid JSON lines
+        // Handle plain text response (happens with conversation history)
+        const plainText = line.trim();
+        if (plainText && !plainText.startsWith('{')) {
+          // Create a fake message object for plain text responses
+          const fakeMessage = {
+            type: 'assistant',
+            subtype: 'message',
+            message: {
+              content: [{ type: 'text', text: plainText }]
+            }
+          };
+          onChunk(fakeMessage);
+        }
         continue;
       }
     }

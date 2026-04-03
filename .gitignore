@@ -7,3 +7,6 @@ yarn-error.log
 .DS_Store
 Thumbs.db
 .env
+
+# Testing artifacts
+cookies.txt

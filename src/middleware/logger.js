@@ -44,10 +44,11 @@ const logger = (req, res, next) => {
 
     // Only log interesting paths
     const path = req.path;
-    if (path.startsWith('/v1') || path.startsWith('/dashboard/api/chat')) {
+    const originalUrl = req.originalUrl;
+    if (path.startsWith('/v1') || path.startsWith('/api/chat') || originalUrl.startsWith('/v1')) {
       addRequest({
         method:          req.method,
-        path,
+        path:            originalUrl, // Use originalUrl to preserve full path
         statusCode:      res.statusCode,
         durationMs:      ms,
         isStream,

@@ -308,7 +308,7 @@ function renderMessages() {
   }
   area.innerHTML = msgs.map((m, i) => `
     <div class="msg msg-${m.role}" style="${m.role==='user'?'align-self:flex-end':''}">
-      <div class="msg-bubble">${m.role === 'assistant' ? mdToHtml(m.content || '') : escHtml(m.content)}</div>
+      <div class="msg-bubble">${m.role === 'assistant' ? mdToHtml(m.content || '...') : escHtml(m.content)}</div>
     </div>`).join('');
   if (state.chat.streaming) area.innerHTML += `<div class="msg msg-assistant"><div class="msg-bubble"><div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div></div>`;
   area.scrollTop = area.scrollHeight;
@@ -339,30 +339,55 @@ window.sendMessage = async () => {
     const res = await fetch('/dashboard/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: state.chat.messages.slice(0, -1), model: state.chat.model }),
+      body: JSON.stringify({ 
+        messages: state.chat.messages.slice(0, -1), // All messages except the empty assistant message we just added
+        model: state.chat.model 
+      }),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errorText.includes('Not authenticated') ? 'Not authenticated - please refresh and login' : 'Server error'}`);
+    }
 
     const reader = res.body.getReader(), dec = new TextDecoder();
     let buf = '';
+    let chunkCount = 0;
+    
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      
       buf += dec.decode(value, { stream: true });
       const lines = buf.split('\n'); buf = lines.pop() || '';
+      
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
-        const raw = line.slice(6); if (raw === '[DONE]') break;
+        const raw = line.slice(6); 
+        if (raw === '[DONE]') break;
+        
         try {
           const chunk = JSON.parse(raw);
+          
+          // Skip initial connection message
+          if (chunk.type === 'connection') continue;
+          
           const delta = chunk.choices?.[0]?.delta?.content ?? '';
-          if (delta) { assistant.content += delta; state.chat.streaming = false; renderMessages(); state.chat.streaming = true; }
-        } catch { /* ignore */ }
+          if (delta) { 
+            assistant.content += delta; 
+            chunkCount++;
+            renderMessages();
+          }
+        } catch (e) { 
+          console.warn('Failed to parse SSE chunk:', raw); 
+        }
       }
     }
   } catch (err) {
+    console.error('Chat error:', err);
     assistant.content = `⚠️ Error: ${err.message}`;
   }
+  
   state.chat.streaming = false;
   renderMessages();
   $('send-btn').disabled = false;

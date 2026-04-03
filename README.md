@@ -9,7 +9,7 @@ Use Qoder through any tool or library designed for OpenAI's API.
 - **💬 Full Chat Support**: Support for `/v1/chat/completions` (system messages, multi-turn history)
 - **🛠 Tool Calling**: Automatic tool execution (file operations, shell commands, code editing) with OpenAI-compatible responses
 - **⚡ Streaming**: Real-time SSE streaming responses without lag
-- **🔄 Intelligent Tier Mapping**: Seamless translation between OpenAI aliases (gpt-4, claude-3.5) and Qoder tiers (auto, ultimate, lite)
+- **🔄 Intelligent Tier Mapping**: Seamless translation between OpenAI aliases (gpt-4, claude-3.5) and Qoder tiers (auto, ultimate, lite) since qoder cli doesn't have those models but uses Qoder's own tier system
 - **📊 Admin Dashboard**: Built-in dark-themed web dashboard for testing, viewing live logs, and monitoring proxy health
 - **🐳 Docker Native**: Zero-persistence RAM-only architecture designed for easy deployment to cloud services via our public GHCR image
 
