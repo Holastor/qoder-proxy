@@ -162,9 +162,11 @@ The proxy supports **automatic tool calling** using qodercli's built-in tools. W
 Tools are automatically invoked based on the user's request—no manual tool definitions required!
 
 ## ⚠️ Limitations
+
 - **Embeddings**: Qoder does not support embeddings. Calling `/v1/embeddings` securely returns a `501 Not Implemented`.
 - **Token usage limits**: Request token tracking / `usage` payload properties return `null`.
 - **Custom Tools**: Only qodercli's built-in tools are supported (Write, Read, Bash, Edit, etc.). Custom OpenAI-style function definitions are not yet supported.
+- **IDE Compatibility**: Some IDE tools (e.g., Zed) have aggressive first-byte timeouts (<10ms) incompatible with qodercli's startup time (2-5 seconds). The proxy works perfectly with OpenAI SDKs, API clients, and most tools, but may not work with IDEs expecting sub-100ms response times. Test with your specific tool.
 
 ## License
 MIT
