@@ -123,7 +123,9 @@ router.post("/", (req, res) => {
       choices: [
         {
           index: 0,
-          delta: { role: "assistant", content: "" },
+          // When tools are present, omit content from the role chunk entirely.
+          // IDEs use the presence/absence of content to decide how to handle the stream.
+          delta: hasTools ? { role: "assistant" } : { role: "assistant", content: "" },
           finish_reason: null,
         },
       ],
@@ -292,6 +294,11 @@ router.post("/", (req, res) => {
           },
         });
       },
+    });
+
+    // Clean up if client disconnects during non-streaming response
+    req.on("close", () => {
+      if (!res.headersSent) child.kill();
     });
   }
 });

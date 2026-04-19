@@ -61,21 +61,7 @@ const buildPromptWithTools = (messages, tools, messagesToPromptFn) => {
 
   const toolSystem = buildToolSystemPrompt(tools);
 
-  // Extract the last user message directly — bypasses messagesToPrompt entirely
-  // because messagesToPrompt drops system messages and we need to include tool instructions.
-  const lastUser = messages
-    .slice()
-    .reverse()
-    .find((m) => m.role === 'user');
-
-  const userContent = Array.isArray(lastUser?.content)
-    ? lastUser.content
-        .filter((p) => p.type === 'text')
-        .map((p) => p.text)
-        .join('')
-    : lastUser?.content || '';
-
-  // Also extract any existing system message to include alongside tool instructions
+  // Extract system message separately
   const existingSystem = messages.find((m) => m.role === 'system');
   const systemContent = existingSystem
     ? Array.isArray(existingSystem.content)
@@ -83,10 +69,31 @@ const buildPromptWithTools = (messages, tools, messagesToPromptFn) => {
       : existingSystem.content || ''
     : '';
 
-  // Build final prompt: tool instructions + optional system context + user message
+  // Get conversation messages (non-system), keep last 10 turns for context
+  const conversation = messages.filter((m) => m.role !== 'system');
+  const recent = conversation.slice(-10);
+
+  const extractContent = (msg) => {
+    if (Array.isArray(msg.content)) {
+      return msg.content.filter((p) => p.type === 'text').map((p) => p.text).join('');
+    }
+    // Handle tool_result messages from multi-turn tool calling
+    if (typeof msg.content === 'string') return msg.content;
+    return '';
+  };
+
+  // Build the prompt parts
   const parts = [toolSystem];
-  if (systemContent) parts.push(`System context: ${systemContent.trim()}`);
-  parts.push(`User: ${userContent.trim()}`);
+  if (systemContent.trim()) parts.push(`System context: ${systemContent.trim()}`);
+
+  // Include conversation history with role labels
+  for (const msg of recent) {
+    const content = extractContent(msg).trim();
+    if (!content) continue;
+    if (msg.role === 'user') parts.push(`User: ${content}`);
+    else if (msg.role === 'assistant') parts.push(`Assistant: ${content}`);
+    else if (msg.role === 'tool') parts.push(`Tool result: ${content}`);
+  }
 
   return parts.join('\n\n');
 };

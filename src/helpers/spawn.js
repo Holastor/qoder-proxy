@@ -7,7 +7,12 @@ const { addSystem } = require("../store/logStore");
 
 const spawnQoderCli = (prompt, model, flags = []) => {
   if (process.platform === "win32") {
-    const args = ["/c", "qodercli.cmd", "-p", prompt, "-f", "stream-json"];
+    // On Windows, pass a cmd-safe prompt to avoid shell interpretation of
+    // special characters (&, |, >, <, ^, ").
+    const safePrompt = prompt
+      .replace(/"/g, '\\"')
+      .replace(/[&|<>^]/g, "^$&");
+    const args = ["/c", "qodercli.cmd", "-p", safePrompt, "-f", "stream-json"];
     if (model) args.push("--model", model);
     if (flags.length) args.push(...flags);
     return spawn("cmd.exe", args, {
